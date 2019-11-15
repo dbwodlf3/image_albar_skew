@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import mylib as t
 
 kernel = np.ones((5,5), np.uint8)
 
@@ -10,8 +9,15 @@ img_gray_blur = cv2.GaussianBlur(img_gray, (5,5), 0)
 img_canny = cv2.Canny(img_gray, 50, 200)
 img_canny_dilation = cv2.dilate(img_canny, kernel, iterations=3)
 
-cv2.imwrite("zz.jpg", img_canny_dilation)
+dst = cv2.cornerHarris(img_canny_dilation, 2, 3, 0.2)
 
-a = t.getX(img_canny_dilation)
+print(dst)
 
-print(a)
+print(dst.max())
+
+#dilated
+dst = cv2.dilate(dst,None)
+
+img[dst>0.01*dst.max()] = [0,0,255]
+
+cv2.imwrite("hoho.jpg", img)

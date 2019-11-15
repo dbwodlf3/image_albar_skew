@@ -1,64 +1,39 @@
 import numpy as np
-import math
 import cv2
 
-def compute_skew(file_name):
-		
-	#load in grayscale:
-	src = cv2.imread(file_name,0)
-	height, width = src.shape[0:2]
-	
-	#invert the colors of our image:
-	cv2.bitwise_not(src, src)
-	
-	#Hough transform:
-	minLineLength = width/2.0
-	maxLineGap = 20
-	lines = cv2.HoughLinesP(src,1,np.pi/180,100,minLineLength,maxLineGap)
-	
-	#calculate the angle between each line and the horizontal line:
-	angle = 0.0
-	nb_lines = len(lines)
-	
-	
-	for line in lines:
-		angle += math.atan2(line[0][3]*1.0 - line[0][1]*1.0,line[0][2]*1.0 - line[0][0]*1.0);
-	
-	angle /= nb_lines*1.0
-	
-	return angle* 180.0 / np.pi
+def findBox(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+    ret,thresh = cv2.threshold(gray,127,255,1)
+    
+    contours,h = cv2.findContours(thresh,1,2)
+
+    k = 0
+    
+    for cnt in contours:
+        approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
+        if len(approx)==4:
+            if len(cnt)>300:
+                result = cnt
+                k = k+1
+    if k != 1 :
+        print("Error")
+        return 1
+    return result
 
 
-def deskew(file_name,angle):
-			
-	#load in grayscale:
-	img = cv2.imread(file_name,0)
-	
-	#invert the colors of our image:
-	cv2.bitwise_not(img, img)
-	
-	#compute the minimum bounding box:
-	non_zero_pixels = cv2.findNonZero(img)
-	center, wh, theta = cv2.minAreaRect(non_zero_pixels)
-	
-	root_mat = cv2.getRotationMatrix2D(center, angle, 1)
-	rows, cols = img.shape
-	rotated = cv2.warpAffine(img, root_mat, (cols, rows), flags=cv2.INTER_CUBIC)
-	
+def sliceImage(img):
+    a = findBox(img)
 
-	#Border removing:
-	sizex = np.int0(wh[0])
-	sizey = np.int0(wh[1])
-	print (theta)
-	if theta > -45 :
-		temp = sizex
-		sizex= sizey
-		sizey= temp
-	return cv2.getRectSubPix(rotated, (sizey,sizex), center)
-  
+    x = []
+    y = []
+    for i in a:
+        x.append(i[0][0])
+        y.append(i[0][1])
 
-file_path = 'test.jpg'  
-angel = compute_skew(file_path)
-dst = deskew(file_path,angel)
-cv2.imshow("Result",dst)
-cv2.waitKey(0)
+    #보정값
+
+    addY = int((max(y)-min(y))/10)
+    addX = int((max(x)-min(y))/5)
+    img = img[min(y)-addY:max(y), min(x)-addX:max(x)+addX]
+    return img
